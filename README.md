@@ -40,7 +40,7 @@ All configuration is via environment variables:
 | `POSTHOG_DISTINCT_ID`          | machine hostname           | The `distinct_id` for all events                |
 | `POSTHOG_PROJECT_NAME`         | cwd basename               | Project name in all events                      |
 | `POSTHOG_TAGS`                 | _(none)_                   | Custom tags: `key1:val1,key2:val2`              |
-| `POSTHOG_MAX_ATTRIBUTE_LENGTH` | `12000`                    | Max length for serialized tool input/output     |
+| `POSTHOG_MAX_ATTRIBUTE_LENGTH` | `12000`                    | Max length for serialized content attributes    |
 
 If `POSTHOG_API_KEY` is not set, the plugin is a no-op.
 
@@ -57,6 +57,7 @@ Emitted for each LLM roundtrip (step-finish part). Properties include:
 - `$ai_latency` — not available per-step (use trace-level latency)
 - `$ai_stop_reason` — `stop`, `tool_calls`, `error`, etc.
 - `$ai_input`, `$ai_output_choices` — message content (null in privacy mode)
+- `$ai_reasoning` — reasoning-model output for the step (null in privacy mode)
 - `$ai_trace_id`, `$ai_span_id`, `$ai_session_id` — correlation IDs
 
 ### `$ai_span` — per tool execution
@@ -81,9 +82,9 @@ Emitted on `session.idle` (agent finished responding). Properties include:
 
 ## Privacy
 
-When `POSTHOG_PRIVACY_MODE=true`, all content fields (`$ai_input`, `$ai_output_choices`, `$ai_input_state`, `$ai_output_state`) are set to `null`. Token counts, costs, latency, and model metadata still flow.
+When `POSTHOG_PRIVACY_MODE=true`, all content fields (`$ai_input`, `$ai_output_choices`, `$ai_reasoning`, `$ai_input_state`, `$ai_output_state`) are set to `null`. Token counts, costs, latency, and model metadata still flow.
 
-Sensitive keys (matching `api_key`, `token`, `secret`, `password`, `authorization`, `credential`, `private_key`) are always redacted in tool inputs/outputs regardless of privacy mode.
+Sensitive keys (matching `api_key`, `token`, `secret`, `password`, `authorization`, `credential`, `private_key`) are always redacted in content attributes, including reasoning and tool inputs/outputs, regardless of privacy mode.
 
 ## Credits
 

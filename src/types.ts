@@ -33,6 +33,11 @@ export interface TraceState {
     stepAssistantText?: string
     /** Names of tools called during the current step, in call order, reset on each step-start. */
     stepToolCalls: string[]
+    /**
+     * Reasoning emitted during the current step, keyed by part ID in arrival order.
+     * Updates contain the full streamed text, and a step can contain multiple blocks.
+     */
+    stepReasoningParts: Map<string, string>
     currentAssistantMsg?: AssistantInfo
     currentGenerationSpanId?: string
     agentName?: string

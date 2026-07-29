@@ -59,6 +59,7 @@ function makeTrace(overrides?: Partial<TraceState>): TraceState {
         stepInputSnapshot: [{ role: 'user', content: 'Hello' }],
         stepAssistantText: 'Hi there!',
         stepToolCalls: [],
+        stepReasoningParts: new Map(),
         messageIds: new Set<string>(),
         ...overrides,
     }
@@ -193,6 +194,48 @@ describe('buildAiGeneration', () => {
         const result = buildAiGeneration(makeStepFinish(), makeAssistantInfo(), trace, defaultConfig)
         trace.stepToolCalls.push('edit')
         expect(result.properties.$ai_tools_called).toEqual(['read'])
+    })
+
+    it("reports the step's reasoning text", () => {
+        const trace = makeTrace({ stepReasoningParts: new Map([['reasoning-1', 'We need solve problem.']]) })
+        const result = buildAiGeneration(makeStepFinish(), makeAssistantInfo(), trace, defaultConfig)
+        expect(result.properties.$ai_reasoning).toBe('We need solve problem.')
+    })
+
+    it('joins multiple reasoning blocks in arrival order', () => {
+        const trace = makeTrace({
+            stepReasoningParts: new Map([
+                ['reasoning-1', 'First thought.'],
+                ['reasoning-2', 'Second thought.'],
+            ]),
+        })
+        const result = buildAiGeneration(makeStepFinish(), makeAssistantInfo(), trace, defaultConfig)
+        expect(result.properties.$ai_reasoning).toBe('First thought.\n\nSecond thought.')
+    })
+
+    it('sets reasoning to null when the step produced none', () => {
+        const result = buildAiGeneration(makeStepFinish(), makeAssistantInfo(), makeTrace(), defaultConfig)
+        expect(result.properties.$ai_reasoning).toBeNull()
+    })
+
+    it('redacts reasoning in privacy mode', () => {
+        const trace = makeTrace({ stepReasoningParts: new Map([['reasoning-1', 'Private thought.']]) })
+        const result = buildAiGeneration(makeStepFinish(), makeAssistantInfo(), trace, privacyConfig)
+        expect(result.properties.$ai_reasoning).toBeNull()
+    })
+
+    it('redacts sensitive values and truncates reasoning', () => {
+        const trace = makeTrace({
+            stepReasoningParts: new Map([['reasoning-1', `prefix api_key: sk-secret, ${'x'.repeat(100)}`]]),
+        })
+        const result = buildAiGeneration(makeStepFinish(), makeAssistantInfo(), trace, {
+            ...defaultConfig,
+            maxAttributeLength: 25,
+        })
+        const reasoning = result.properties.$ai_reasoning as string
+        expect(reasoning).toContain('[REDACTED]')
+        expect(reasoning).toContain('[truncated')
+        expect(reasoning).not.toContain('sk-secret')
     })
 
     it('marks error generations', () => {

@@ -44,6 +44,8 @@ export function buildAiGeneration(
         config.privacyMode
     )
 
+    const reasoning = trace.stepReasoningParts.size > 0 ? [...trace.stepReasoningParts.values()].join('\n\n') : null
+
     return {
         event: '$ai_generation',
         distinctId: config.distinctId,
@@ -65,6 +67,10 @@ export function buildAiGeneration(
 
             $ai_input: inputMessages,
             $ai_output_choices: outputChoices,
+            $ai_reasoning: redactForPrivacy(
+                serializeAttribute(reasoning, config.maxAttributeLength),
+                config.privacyMode
+            ),
 
             // Tool calls are emitted as $ai_span events too, but PostHog only extracts
             // tool usage from $ai_generation, so the Tools view stays empty unless the
