@@ -6,6 +6,7 @@ import type {
     StepFinishPart,
     ToolPart,
     TextPart,
+    ReasoningPart,
     ToolStateCompleted,
     ToolStateError,
 } from '@opencode-ai/sdk'
@@ -59,6 +60,7 @@ export const PostHogPlugin: Plugin = async () => {
                 hadError: false,
                 stepInputMessages: [],
                 stepInputSnapshot: [],
+                stepReasoningParts: new Map(),
                 messageIds: new Set(),
             }
             traces.set(sessionId, trace)
@@ -90,6 +92,7 @@ export const PostHogPlugin: Plugin = async () => {
                 agentName: msg.agent,
                 stepInputMessages: [],
                 stepInputSnapshot: [],
+                stepReasoningParts: new Map(),
                 messageIds: new Set([msg.id]),
             }
             traces.set(msg.sessionID, trace)
@@ -125,6 +128,9 @@ export const PostHogPlugin: Plugin = async () => {
             case 'text':
                 handleTextPart(part)
                 break
+            case 'reasoning':
+                handleReasoningPart(part)
+                break
             case 'step-start':
                 handleStepStart(part)
                 break
@@ -153,6 +159,13 @@ export const PostHogPlugin: Plugin = async () => {
         }
     }
 
+    function handleReasoningPart(part: ReasoningPart) {
+        const trace = traces.get(part.sessionID)
+        if (!trace) return
+
+        if (part.text) trace.stepReasoningParts.set(part.id, part.text)
+    }
+
     function handleStepStart(part: StepStartPart) {
         const trace = traces.get(part.sessionID)
         if (!trace) return
@@ -165,6 +178,8 @@ export const PostHogPlugin: Plugin = async () => {
         trace.stepInputSnapshot = [...trace.stepInputMessages]
         // Reset per-step assistant text for the new generation
         trace.stepAssistantText = undefined
+        // Reset per-step reasoning so it cannot leak into the next generation.
+        trace.stepReasoningParts.clear()
     }
 
     function handleStepFinish(part: StepFinishPart) {

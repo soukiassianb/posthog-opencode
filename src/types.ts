@@ -31,6 +31,11 @@ export interface TraceState {
     stepInputSnapshot: InputMessage[]
     /** Assistant text accumulated during the current step, reset on each step-start. */
     stepAssistantText?: string
+    /**
+     * Reasoning emitted during the current step, keyed by part ID in arrival order.
+     * Updates contain the full streamed text, and a step can contain multiple blocks.
+     */
+    stepReasoningParts: Map<string, string>
     currentAssistantMsg?: AssistantInfo
     currentGenerationSpanId?: string
     agentName?: string
